@@ -1,0 +1,66 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QRCode Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}">
+
+    <style>
+        #bodyContainer{
+          flex: 1 1;
+          max-width: 800px;
+          width: 100%;
+          text-align: center;
+          padding: 0px 10px;
+          margin: 0px auto;
+        }
+        #videoContainer {
+            margin: 0px auto;
+            width: 400px;
+            height: 300px;
+            border: 10px #333 solid;
+        }
+        #videoElement {
+            width: 380px;
+            height: 280px;
+            background-color: #666;
+        }
+        .tableGrid {
+          height: 275px;
+          margin-top: 15px;
+          margin-bottom: 10px;
+          font-size: 12px;
+          position: relative;
+          box-sizing: border-box;
+          direction: ltr;
+          will-change: transform;
+          overflow: auto;
+        }
+        .tableData{
+          font-size: 11px;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div id="bodyContainer">
+      <div class="page-header">
+          <h1>{{ titulo }}</h1>
+      </div>
+
+      <div id="videoContainer">
+        <img id="videoElement" src="{{ url_for('video_feed') }}">
+      </div>
+
+      
+      <div class="tableGrid">
+        {{ tables[0]|safe }}
+      </div>
+      
+     
+       
+     
+
+    </div>
+  </body>
+</html>
