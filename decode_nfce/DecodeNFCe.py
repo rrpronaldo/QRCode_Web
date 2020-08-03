@@ -2,6 +2,9 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 import re
+import os
+
+path_ncm_table = "./data/NCM_Tabela.csv"
 
 class DecodeNFCe:
     def __init__(self):
@@ -11,6 +14,8 @@ class DecodeNFCe:
         self.regex_CNPJ = 'CNPJ</label><span>([^>]*)</span>'
         self.regex_data_emissao = 'Emissão</label><span>(\\d{2}/\\d{2}/\\d{2,4})'
         self.regex_valor_total = 'Fiscal\\s\\s</label><span>(\\d{1,5},\\d{1,2})</span>'
+        if os.path.exists(path_ncm_table):
+            self.base_NCM = pd.read_csv(path_ncm_table)
     
     def get_data(self, page, chave, columns):
         print("[INFO] Decoding Data . . .")
@@ -62,6 +67,7 @@ class DecodeNFCe:
         retorno['Valores_Unit'] = nfce_valores_unit
         retorno['Codigo_NCM_Prod'] = nfce_codigos_NCM
         retorno['Chave'] = chave
+        retorno = pd.merge(retorno, self.base_NCM, on='Codigo_NCM_Prod')
 
         retorno = retorno[columns]
 

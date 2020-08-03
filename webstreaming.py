@@ -2,7 +2,6 @@
 # python webstreaming.py --ip 0.0.0.0 --port 8000
 
 # import the necessary packages
-from motion_detection import SingleMotionDetector
 from decode_nfce import DecodeNFCe
 from imutils.video import VideoStream
 from flask import Response
@@ -30,7 +29,7 @@ regex_chave = "p=(\\d{44})"
 path_csv_coupons = "./data/coupons.csv"
 columns = ['Data_Emissao',  'Descricao_Prod', 'Qtd', 'Unid_Med',
 			'Valores_Unit','Valor_Total_Prod', 'Valor_Total_NF',
-			'Codigo_NCM_Prod', 'Estabelecimento_CNPJ',
+			'Codigo_NCM_Prod', 'NCM_Descricao', 'Estabelecimento_CNPJ',
        		'Estabelecimento',  'Chave']
 data = pd.DataFrame(columns=columns)
 
@@ -129,7 +128,6 @@ def decodeNF(chave, tryCount=1):
 	#Test if the request page was successfully
 	if page.status_code == 200:
 		new_data = nfce.get_data(page, chave, columns)
-		new_data['Chave'] = chave
 		data = pd.concat([data, new_data], axis=0, ignore_index=True)
 		#Save data in file
 		print("[INFO] Saving file on disc ...")

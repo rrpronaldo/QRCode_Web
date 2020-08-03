@@ -6,6 +6,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}">
 
     <style>
+      .bodyArea{
+        background-color: #3b3e44;
+      }
         #bodyContainer{
           flex: 1 1;
           max-width: 800px;
@@ -13,6 +16,12 @@
           text-align: center;
           padding: 0px 10px;
           margin: 0px auto;
+          background-color: #f7f4f4 ;
+          border-radius: 15px;
+        }
+        .videoArea{
+          border-bottom: 1px solid #e4e4e4;
+          padding-bottom: 20px;
         }
         #videoContainer {
             margin: 0px auto;
@@ -24,6 +33,10 @@
             width: 380px;
             height: 280px;
             background-color: #666;
+        }
+        .tableArea{
+          border-bottom: 1px solid #e4e4e4;
+          padding-bottom: 20px;
         }
         .tableGrid {
           height: 275px;
@@ -39,24 +52,32 @@
         .tableData{
           font-size: 11px;
         }
+        .header{
+          padding-bottom: 9px;
+          margin: 20px 0 20px;
+          border-bottom: 1px solid #e4e4e4;
+          border-radius: 3px;
+        }
 
     </style>
   </head>
-  <body>
+  <body class="bodyArea">
     <div id="bodyContainer">
-      <div class="page-header">
-          <h1>{{ titulo }}</h1>
+      <div class="header">
+          <h1 style="padding-top: 12px; margin-bottom: 2px; font-size:30px">{{ titulo }}</h1>
       </div>
 
-      <div id="videoContainer">
-        <img id="videoElement" src="{{ url_for('video_feed') }}">
-      </div>
-
-      
-      <div class="tableGrid">
-        {{ tables[0]|safe }}
+      <div class="videoArea">
+        <div id="videoContainer">
+          <img id="videoElement" src="{{ url_for('video_feed') }}">
+        </div>
       </div>
       
+      <div class="tableArea">
+        <div class="tableGrid">
+          {{ tables[0]|safe }}
+        </div>
+      </div>
      
        
      
