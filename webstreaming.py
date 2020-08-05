@@ -7,7 +7,7 @@ from imutils.video import VideoStream
 from flask import Response
 from flask import Flask
 from flask import render_template
-from flask import redirect, url_for
+from flask import redirect, url_for, request, flash, send_file
 import threading
 import argparse
 import datetime
@@ -18,6 +18,7 @@ from pyzbar import pyzbar
 import re
 import requests
 import pandas as pd
+import numpy as np
 import os
 
 import warnings
@@ -27,11 +28,13 @@ nfce = DecodeNFCe()
 found = set()
 regex_chave = "p=(\\d{44})"
 path_csv_coupons = "./data/coupons.csv"
+path_image_file = "./data/"
 columns = ['Data_Emissao',  'Descricao_Prod', 'Qtd', 'Unid_Med',
 			'Valores_Unit','Valor_Total_Prod', 'Valor_Total_NF',
 			'Codigo_NCM_Prod', 'NCM_Descricao', 'Estabelecimento_CNPJ',
        		'Estabelecimento',  'Chave']
 data = pd.DataFrame(columns=columns)
+titleWeb = "QRCode Detector"
 
 # initialize the output frame and a lock used to ensure thread-safe
 # exchanges of the output frames (useful for multiple browsers/tabs
@@ -54,10 +57,10 @@ def index():
 	return render_template('index.html',  
 							tables=[data.to_html(classes='tableData table table-striped ')], 
 							titles=data.columns.values,
-							titulo="WebCam QRCode Detector")
+							titulo=titleWeb)
 	#return render_template("index.html", data_columns=columns)
 
-def detect_image():
+def detect_from_video():
 	# grab global references to the video stream, output frame, and
 	# lock variables
 	global vs, outputFrame, lock, data, found
@@ -114,6 +117,43 @@ def detect_image():
 		else:
 			with lock:
 				outputFrame = frame.copy()
+
+@app.route('/detect_image', methods=['POST'])
+def detect_image():
+	if 'fileImage' not in request.files:
+		print("Não veio arquivo")
+		return Response(status=500)
+	else:
+		image = request.files['fileImage']
+		if image.filename == '':
+			print('No selected file')
+			return Response(status=500)
+		else:
+			imageUpload = cv2.imdecode(np.fromstring(image.read(), np.uint8), cv2.IMREAD_UNCHANGED)
+			imageUpload = imutils.resize(imageUpload, width=400)
+
+			barcodes = pyzbar.decode(imageUpload)
+			print(barcodes)
+			for barcode in barcodes:
+				# extract the bounding box location of the barcode and draw the
+				# bounding box surrounding the barcode on the image
+				(x, y, w, h) = barcode.rect
+				cv2.rectangle(imageUpload, (x, y), (x + w, y + h), (0, 0, 255), 2)
+				# the barcode data is a bytes object so if we want to draw it on
+				# our output image we need to convert it to a string first
+				barcodeData = barcode.data.decode("utf-8")
+				barcodeType = barcode.type
+				# draw the barcode data and barcode type on the image
+				text = "{} ({})".format(barcodeData, barcodeType)
+				cv2.putText(imageUpload, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
+					0.5, (0, 0, 255), 2)
+				# print the barcode type and data to the terminal
+				print("[INFO] Found {} barcode: {}".format(barcodeType, barcodeData))
+
+			# show the output image
+			cv2.imshow("Image", imageUpload)
+			cv2.waitKey(0)
+			return Response(status=200)
 
 
 def decodeNF(chave, tryCount=1):
@@ -181,7 +221,7 @@ if __name__ == '__main__':
 	args = vars(ap.parse_args())
 
 	# start a thread that will perform QRCode detection
-	t = threading.Thread(target=detect_image)
+	t = threading.Thread(target=detect_from_video)
 	t.daemon = True
 	t.start()
 

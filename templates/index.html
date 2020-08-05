@@ -11,19 +11,21 @@
       }
         #bodyContainer{
           flex: 1 1;
-          max-width: 800px;
+          max-width: 1200px;
           width: 100%;
           text-align: center;
           padding: 0px 10px;
           margin: 0px auto;
+          margin-bottom: 10px;
           background-color: #f7f4f4 ;
           border-radius: 15px;
         }
         .videoArea{
           border-bottom: 1px solid #e4e4e4;
           padding-bottom: 20px;
+          overflow: hidden;
         }
-        #videoContainer {
+        .videoContainer {
             margin: 0px auto;
             width: 400px;
             height: 300px;
@@ -58,8 +60,45 @@
           border-bottom: 1px solid #e4e4e4;
           border-radius: 3px;
         }
+        #imageUpload{
+          display: none;
+          width: 370px;
+          height: 240px;
+          margin-left: 5px;
+          margin: 5px;
+          border: 1px solid #000000;
+        }
+        .btn-file {
+          position: relative;
+          overflow: hidden;
+          padding: 1px;
+          width: 373px;
+          margin-top: 3px;
+          margin-right: 3px;
+          margin-left: 3px;
+          margin-bottom: 3px;
+        }
+        .btn-file input[type=file] {
+          position: absolute;
+          top: 0;
+          right: 0;
+          min-width: 100%;
+          min-height: 100%;
+          font-size: 100px;
+          text-align: right;
+          filter: alpha(opacity=0);
+          opacity: 0;
+          outline: none;
+          background: white;
+          cursor: inherit;
+          display: block;
+        }
 
     </style>
+    
+    <script class="jsbin" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+    <script class="jsbin" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.0/jquery-ui.min.js"></script>
+
   </head>
   <body class="bodyArea">
     <div id="bodyContainer">
@@ -68,18 +107,57 @@
       </div>
 
       <div class="videoArea">
-        <div id="videoContainer">
-          <img id="videoElement" src="{{ url_for('video_feed') }}">
+        <div style="width: 100%; overflow: hidden;">
+          <div style="width: 600px; float: left; border-right: 1px solid #e4e4e4;">
+            <div class="videoContainer">
+              <img id="videoElement" src="{{ url_for('video_feed') }}">
+            </div>
+          </div>
+          <div style="margin-left: 620px;">
+            <div class="videoContainer">
+              <div>
+                <span class="btn btn-default btn-file">
+                  Selecionar uma Nota no Arquivo <input type="file" name="fileImage" accept="image/*" onchange="readURL(this);">
+                </span>
+                <img id="imageUpload" src="#" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      
+
       <div class="tableArea">
         <div class="tableGrid">
           {{ tables[0]|safe }}
         </div>
       </div>
      
-       
+      <script>
+        function readURL(input) {
+          if (input.files && input.files[0]) {
+              var reader = new FileReader();
+              reader.onload = function (e) {
+                $('#imageUpload').attr('src', e.target.result);
+
+                document.getElementById("imageUpload").style.display = "block";
+
+                let photo = input.files[0];
+                let formData = new FormData();
+
+                formData.append("fileImage", photo);
+
+                fetch('/detect_image', {method: "POST", body: formData});
+
+              };
+
+              reader.readAsDataURL(input.files[0]);
+
+          }else{
+            document.getElementById("imageUpload").style.display = "none";
+          }
+        }
+
+      </script>
      
 
     </div>
