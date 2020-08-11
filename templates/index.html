@@ -93,6 +93,19 @@
           cursor: inherit;
           display: block;
         }
+        .logTitle{
+          font-weight: 600; 
+          font-size: 13px; 
+          border-bottom: 1px solid #e4e4e4; 
+          background-color: #ffffff; 
+          padding: 2px;
+        }
+        #logOutput{
+          overflow: auto; 
+          height: 280px; 
+          background-color: #f9f9f9;
+          font-size: 12px;
+        }
 
     </style>
     
@@ -108,12 +121,22 @@
 
       <div class="videoArea">
         <div style="width: 100%; overflow: hidden;">
-          <div style="width: 600px; float: left; border-right: 1px solid #e4e4e4;">
+          <div style="width: 400px; float: left;">
             <div class="videoContainer">
               <img id="videoElement" src="{{ url_for('video_feed') }}">
             </div>
           </div>
-          <div style="margin-left: 620px;">
+
+          <div style="width: 380px; height: 300; float:left; border: 1px solid #e4e4e4; ">
+            <div class="logTitle"> 
+              Application Logs 
+            </div>
+            <div id="logOutput" >
+
+            </div>
+          </div>
+
+          <div style="width: 400px; float:right;">
             <div class="videoContainer">
               <div>
                 <span class="btn btn-default btn-file">
@@ -131,7 +154,10 @@
           {{ tables[0]|safe }}
         </div>
       </div>
-     
+
+      <div id="teste"></div>
+
+   
       <script>
         function readURL(input) {
           if (input.files && input.files[0]) {
@@ -146,17 +172,43 @@
 
                 formData.append("fileImage", photo);
 
-                fetch('/detect_image', {method: "POST", body: formData});
-
+                fetch('/detect_image', {method: "POST", body: formData}).then(
+                  function(response) {
+                    return response.blob();
+                  }
+                ).then(
+                  function(blob){
+                    return blob.text();
+                  }
+                ).then(
+                  function(text){
+                    var dataImage = 'data:image/jpeg;base64,' + text;
+                    setTimeout(function() {
+                      $('#imageUpload').attr('src', dataImage);
+                    }, 1000);
+                  }
+                );
               };
-
               reader.readAsDataURL(input.files[0]);
-
           }else{
             document.getElementById("imageUpload").style.display = "none";
           }
         }
 
+        //Construction log output
+        var logOutput = document.getElementById('logOutput');
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', "{{ url_for('logStream') }}");
+        xhr.send();
+
+        
+        setInterval(function() {
+            //output.textContent = xhr.responseText;
+            logOutput.innerHTML = xhr.responseText;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+        }, 1000);
       </script>
      
 
