@@ -1,16 +1,9 @@
-# Usage
-# python3 webstreaming.py
-
 # import the necessary packages
 from decode_nfce import DecodeNFCe
+from decode_nfce import GoogleSpreadSheet
 from imutils.video import VideoStream
-from flask import Response
-from flask import Flask
-from flask import render_template
-from flask import redirect, url_for, request, flash, send_file
+from flask import Response, Flask, render_template, redirect, url_for, request, flash, send_file
 import threading
-import argparse
-import datetime
 import imutils
 import time
 import cv2
@@ -21,20 +14,38 @@ import pandas as pd
 import numpy as np
 import base64
 import os
+import json
 
 import warnings
 warnings.filterwarnings("ignore")
 
+#Open and read the JSON config file
+json_file = open('./config/config.json')
+config_options = json.load(json_file)
+json_file.close()
+
+#Create global objects to decode and save coupons data
 nfce = DecodeNFCe()
-found = set()
+
+#Create a object to save data on Google Spreadsheet
+google_sheet = GoogleSpreadSheet(scope_sheets=config_options['scope_sheets'],
+									path_credentials=config_options['path_credentials'],
+									spreadsheet_key=config_options['spreadsheet_key'])
+
+#Set object used to verify if the coupons already exists on database or csv file
+keys_found_set = set()
+#Regex expression to extract the coupon key from URL detected in the image
 regex_chave = "p=(\\d{44})"
+#Path to files on local machine
 path_csv_coupons = "./data/coupons.csv"
 path_image_file = "./data/"
-columns = ['Data_Emissao',  'Descricao_Prod', 'Qtd', 'Unid_Med',
-			'Valores_Unit','Valor_Total_Prod', 'Valor_Total_NF',
-			'Codigo_NCM_Prod', 'NCM_Descricao', 'Estabelecimento_CNPJ',
-       		'Estabelecimento',  'Chave']
-data = pd.DataFrame(columns=columns)
+#List of columns used to create the CSV file or to insert in the database table
+columns_coupons = ['dt_emissao',  'de_produto', 'qt_produto', 'no_unidade_medida',
+			'vr_unitario','vr_total_produto', 'vr_total_NF',
+			'co_NCM_produto', 'de_NCM_produto', 'nu_cnpj_estabelecimento',
+       		'no_estabelecimento',  'nu_chave']
+#DataFrame with all coupons
+df_coupons = pd.DataFrame(columns=columns_coupons)
 titleWeb = "QRCode Detector"
 logList = []
 
@@ -47,8 +58,7 @@ lock = threading.Lock()
 # initialize a flask object
 app = Flask(__name__)
 
-# initialize the video stream and allow the camera sensor to
-# warmup
+# initialize the video stream and allow the camera sensor to warmup
 #vs = VideoStream(usePiCamera=1).start()
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
@@ -57,22 +67,22 @@ time.sleep(2.0)
 def index():
 	# return the rendered template
 	return render_template('index.html',  
-							tables=[data.to_html(classes='tableData table table-striped ')], 
-							titles=data.columns.values,
+							tables=[df_coupons.to_html(classes='tableData table table-striped ')], 
+							titles=df_coupons.columns.values,
 							titulo=titleWeb)
 	#return render_template("index.html", data_columns=columns)
 
 def detect_from_video():
 	# grab global references to the video stream, output frame, and
 	# lock variables
-	global vs, outputFrame, lock, data, found
+	global vs, outputFrame, lock, df_coupons, keys_found_set
 
 	if os.path.exists(path_csv_coupons):
-		data = pd.read_csv(path_csv_coupons)
+		df_coupons = pd.read_csv(path_csv_coupons)
 	else:
-		data = pd.DataFrame(columns=columns)
+		df_coupons = pd.DataFrame(columns=columns_coupons)
 
-	found = set(data['Chave'])
+	keys_found_set = set(df_coupons['nu_chave'])
 	
 	# loop over frames from the video stream
 	while True:
@@ -109,11 +119,11 @@ def detect_qrcode(origin, frame):
 			#Checking if was found a valid key
 			if chave:
 				chave = chave[0]
-				if chave not in found:
+				if chave not in keys_found_set:
 					text = "{} ({})".format(barcodeData, barcodeType)
 					color = (255, 0 , 0)
 
-					found.add(chave)
+					keys_found_set.add(chave)
 					
 					#Create a new Thread to run the function get data from Sefaz Server
 					dec = threading.Thread(target=decodeNF, args=(chave,))
@@ -142,8 +152,6 @@ def detect_qrcode(origin, frame):
 			else:
 				return frame
 
-			
-	
 	elif (origin == "video"):
 		with lock:
 			outputFrame = frame.copy()
@@ -153,7 +161,7 @@ def detect_qrcode(origin, frame):
 @app.route('/detect_image', methods=['POST'])
 def detect_image():
 	if 'fileImage' not in request.files:
-		addLog("[ERROR] File not found in request")
+		addLog("[ERROR] File not found in request.")
 		return Response(status=500)
 	else:
 		image = request.files['fileImage']
@@ -170,11 +178,26 @@ def detect_image():
 			return app.response_class(base64.b64encode(encodedImage.tobytes()), mimetype='text/html')
 
 
+def save_data_gspread(df_dados):
+    try:
+        #Open the Worksheet in the Google Drive
+        worksheet = google_sheet.save_data_gspread()
+        #Convert DataFrame to list
+        df_values = df_dados.values.tolist() 
+        #Append values in the Spreadsheet
+        worksheet.append_rows(values=df_values)
+        
+        return True
+    except Exception as e:
+        print('[ERROR]', e)
+        
+        return False
+
 def decodeNF(chave, tryCount=1):
-	global found, data, nfce
+	global keys_found_set, df_coupons, nfce
 	addLog("[INFO] Connecting to NFCe URL ... Key: {}".format(chave))
 					
-	url = "https://www.sefaz.rs.gov.br/ASP/AAE_ROOT/NFE/SAT-WEB-NFE-COM_2.asp?chaveNFe={}&HML=false&NFFCBA06010".format(chave)
+	url = f"https://www.sefaz.rs.gov.br/ASP/AAE_ROOT/NFE/SAT-WEB-NFE-COM_2.asp?chaveNFe={chave}&HML=false&NFFCBA06010"
 
 	#Connect to the NFCe page URL and get the data
 	page = requests.post(url)
@@ -182,11 +205,16 @@ def decodeNF(chave, tryCount=1):
 	#Test if the request page was successfully
 	if page.status_code == 200:
 		addLog("[INFO] Decoding data ...")
-		new_data = nfce.get_data(page, chave, columns)
-		data = pd.concat([data, new_data], axis=0, ignore_index=True)
+		new_data = nfce.get_data(page, chave, columns_coupons)
+		df_coupons = pd.concat([df_coupons, new_data], axis=0, ignore_index=True)
+		
 		#Save data in file
 		addLog("[INFO] Saving file on disc ...")
-		data.to_csv(path_csv_coupons, index=False)
+		df_coupons.to_csv(path_csv_coupons, index=False)
+
+		#Save data on Google Spreadsheet
+		google_sheet.save_data_gspread(new_data)
+
 	else:
 		addLog("[ERROR] Problem with connecting to the page of Sefaz: {}".format(page.status_code))
 		if( tryCount < 4):
@@ -194,7 +222,7 @@ def decodeNF(chave, tryCount=1):
 			decodeNF(chave, tryCount + 1)
 		else:
 			addLog("[ERROR] Could not connect to server SEFAZ, try in few minutes . . .")
-			found.remove(chave)
+			keys_found_set.remove(chave)
 		
 		
 def generate():
@@ -229,7 +257,7 @@ def video_feed():
 @app.route('/logStream')
 def logStream():
 	def generate_log():
-		global data
+		global df_coupons
 		#with open('job.log') as f:
 		while True:
 			#yield f.read()
