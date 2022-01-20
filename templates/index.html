@@ -36,6 +36,26 @@
             height: 280px;
             background-color: #666;
         }
+        .textContainer {
+            margin: 0px auto;
+            width: 400px;
+            height: 50px;
+            border: 5px #333 solid;
+        }
+        #keyText{
+            float: left;
+            width: 290px;
+        }
+        .btnKeyText {
+            background: white;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            cursor: pointer;
+            height: 26px;
+            border-radius: 5px;
+        }
         .tableArea{
           border-bottom: 1px solid #e4e4e4;
           padding-bottom: 20px;
@@ -148,6 +168,15 @@
           </div>
         </div>
       </div>
+      
+      <div style="width: 400px; ">
+        <div  class="textContainer">
+          <div style="margin: 7px 2px;">
+            <input type="text" name="keyText" id="keyText" placeholder="Chave NFCe" >
+            <button type="button" class="btnKeyText" name="sendKeyText" onclick="readKeyText(this);" > Enviar NFCe </button>
+          </div>
+        </div>
+      </div>
 
       <div class="tableArea">
         <div class="tableGrid">
@@ -194,6 +223,17 @@
             document.getElementById("imageUpload").style.display = "none";
           }
         }
+
+        function readKeyText(input) {
+          var key_text = document.getElementById('keyText').value;
+          let formData = new FormData();
+
+          formData.append("keyText", key_text);
+
+          fetch('/detect_text', {method: "POST", body: formData});
+        }
+
+
 
         //Construction log output
         var logOutput = document.getElementById('logOutput');
